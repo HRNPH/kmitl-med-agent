@@ -1,6 +1,17 @@
 version: '3.8'
 
 services:
+  mcp-wrapper:
+    build: .
+    container_name: mcp-wrapper
+    restart: unless-stopped
+    networks:
+      - open-webui-network
+    ports: 
+      - 8000:8000
+    stdin_open: true
+    tty: true
+
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: open-webui
@@ -21,6 +32,8 @@ services:
       - open-webui-data:/app/backend/data
     networks:
       - open-webui-network
+    depends_on:
+      - mcp-wrapper
 
 volumes:
   open-webui-data:
