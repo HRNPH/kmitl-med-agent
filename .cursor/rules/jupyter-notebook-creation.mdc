@@ -1,0 +1,44 @@
+---
+description: how to create and manage jupyer notebook generation
+alwaysApply: false
+---
+
+1. **Notebook creation workflow**
+
+   - When instructed to create an experiment notebook, never create `.ipynb` directly.
+   - Instead, create `.py` files compatible with Jupytext by using Ipython code.
+
+2. **Source file placement**
+
+   - All new experiment source files must be created inside:
+     ```
+     experiment/<experiment_name>/source/
+     ```
+     Example:
+     ```
+     experiment/test_run/source/analysis.py
+     ```
+
+3. **Convert to notebook**
+
+   - Use Jupytext to convert source `.py` files to notebooks:
+     ```
+     uv run jupytext --to notebook ./*.py && mv *.ipynb ../notebooks
+     ```
+   - This command is run from inside the `source/` directory.
+
+4. **Archiving source**
+
+   - After conversion, move the `.py` files from `source/` into:
+     ```
+     experiment/<experiment_name>/archive/
+     ```
+   - The `archive/` folder acts as a reference or destruction zone.
+
+5. **Never keep active code in `source/`**
+
+   - Once converted and archived, `source/` should be clean, containing only new pending code for future conversions.
+
+6. **Primary rule**
+   - Notebooks are for presentation.
+   - All active experimental logic and iteration happens in `.py` files under `source/`.

@@ -1,0 +1,14 @@
+[project]
+name = "00-baseline-mcp-no-kb"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "autogen>=0.9.7",
+    "ipykernel>=6.30.0",
+    "jupytext>=1.17.2",
+    "numpy>=2.3.2",
+    "ollama>=0.5.1",
+    "pandas>=2.3.1",
+]
