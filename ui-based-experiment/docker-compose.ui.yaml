@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://172.16.30.137:11434
+      - WEBUI_SECRET_KEY=ultimatre-sigma
+      - DEFAULT_MODELS=scb10x/llama3.1-typhoon2-8b-instruct
+      - ENABLE_SIGNUP=true
+      - ENABLE_LOGIN_FORM=true
+      - DEFAULT_USER_ROLE=admin
+      - DEFAULT_USER_NAME=admin
+      - DEFAULT_USER_PASSWORD=admin
+      - ENABLE_DIRECT_CONNECTIONS=true
+    volumes:
+      - open-webui-data:/app/backend/data
+    networks:
+      - open-webui-network
+
+volumes:
+  open-webui-data:
+    driver: local
+
+networks:
+  open-webui-network:
+    driver: bridge 
