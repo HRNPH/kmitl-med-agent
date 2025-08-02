@@ -63,12 +63,12 @@ class BatchQueryResponse(BaseModel):
     results: List[QueryResponse]
 
 
-@app.get("/health")
+@app.get("/")
 async def health_check():
     return {"message": "OK!"}
 
 
-@app.post("/", response_model=QueryResponse)
+@app.post("/eval", response_model=QueryResponse)
 async def single_query_endpoint(payload: SingleQueryRequest):
     """
     Accept a single question and return result.
