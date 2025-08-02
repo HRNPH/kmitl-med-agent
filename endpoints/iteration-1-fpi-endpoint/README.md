@@ -37,6 +37,7 @@ chmod +x docker-scripts.sh
 ```
 
 This will:
+
 - Build the FastAPI application container
 - Start the Ollama service for LLM inference
 - Create necessary volumes and networks
@@ -189,6 +190,7 @@ uv add --dev pytest
 ### Services
 
 1. **FastAPI Application** (`app` service)
+
    - Main API server
    - RAG system with FAISS vector store
    - LangGraph ReAct agent
@@ -215,14 +217,17 @@ uv add --dev pytest
 ### Common Issues
 
 1. **Out of Memory**
+
    - Reduce model size: `./docker-scripts.sh pull-model qwen2:7b`
    - Increase Docker memory limit in Docker Desktop settings
 
 2. **Model Not Found**
+
    - Pull the required model: `./docker-scripts.sh pull-model <model_name>`
    - Check available models: `./docker-scripts.sh list-models`
 
 3. **Service Not Starting**
+
    - Check logs: `./docker-scripts.sh logs`
    - Verify Docker is running
    - Check port availability
@@ -275,6 +280,6 @@ uv add --dev pytest
 4. Test with Docker: `./docker-scripts.sh start`
 5. Submit a pull request
 
-## License
-
-[Add your license information here]
+```
+source .venv/bin/activate && uvicorn src.app.main:app --host 0.0.0.0 --port 8081
+```
