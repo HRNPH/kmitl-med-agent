@@ -1,7 +1,7 @@
 from ..deps.agent import rag
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict, Any
 import uvicorn
 import asyncio
 from contextlib import asynccontextmanager
@@ -35,16 +35,30 @@ class QueryRequest(BaseModel):
     questions: List[str]
 
 
+class SingleQueryRequest(BaseModel):
+    question: str
+
+
+class QueryResponse(BaseModel):
+    answer: str
+    reason: str
+
+
+class BatchQueryResponse(BaseModel):
+    results: List[QueryResponse]
+
+
 @app.get("/")
 async def root():
     return {"message": "OK!"}
 
 
-@app.post("/api/v1/query")
+@app.post("/api/v1/query", response_model=BatchQueryResponse)
 async def query_endpoint(payload: QueryRequest):
     """
     Accept a list of questions and return results.
     Questions will be processed concurrently before sending back response.
+    Returns simplified schema with only answer and reason fields.
     """
     # Ensure the agent is initialized
     if rag_system.agent is None:
@@ -52,7 +66,37 @@ async def query_endpoint(payload: QueryRequest):
 
     # Process in parallel using existing query_batch
     results = await rag_system.query_batch(payload.questions, parallel=True)
-    return {"results": results}
+
+    # Convert to the simplified response format
+    simplified_results = []
+    for result in results:
+        simplified_results.append(
+            QueryResponse(
+                answer=result.get("answer", "Error"),
+                reason=result.get("reason", "No reasoning available"),
+            )
+        )
+
+    return BatchQueryResponse(results=simplified_results)
+
+
+@app.post("/api/v1/query/single", response_model=QueryResponse)
+async def single_query_endpoint(payload: SingleQueryRequest):
+    """
+    Accept a single question and return result.
+    Returns simplified schema with only answer and reason fields.
+    """
+    # Ensure the agent is initialized
+    if rag_system.agent is None:
+        await rag_system.create_agent()
+
+    # Process single question
+    result = await rag_system.query(payload.question)
+
+    return QueryResponse(
+        answer=result.get("answer", "Error"),
+        reason=result.get("reason", "No reasoning available"),
+    )
 
 
 # Optional: for standalone running
