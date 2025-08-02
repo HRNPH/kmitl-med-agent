@@ -31,6 +31,10 @@ app = FastAPI(
 )
 
 
+class SingleQueryRequest(BaseModel):
+    question: str
+
+
 class QueryRequest(BaseModel):
     questions: List[str]
 
@@ -53,7 +57,34 @@ async def root():
     return {"message": "OK!"}
 
 
-@app.post("/", response_model=BatchQueryResponse)
+@app.post("/", response_model=QueryResponse)
+async def query_endpoint(payload: SingleQueryRequest):
+    """
+    Accept a list of questions and return results.
+    Questions will be processed concurrently before sending back response.
+    Returns simplified schema with only answer and reason fields.
+    """
+    # Ensure the agent is initialized
+    if rag_system.agent is None:
+        await rag_system.create_agent()
+
+    # Process in parallel using existing query_batch
+    results = await rag_system.query_batch([payload.question], parallel=True)
+
+    # Convert to the simplified response format
+    simplified_results = []
+    for result in results:
+        simplified_results.append(
+            QueryResponse(
+                answer=result.get("answer", "Error"),
+                reason=result.get("reason", "No reasoning available"),
+            )
+        )
+
+    return BatchQueryResponse(results=simplified_results)
+
+
+@app.post("/batch", response_model=BatchQueryResponse)
 async def query_endpoint(payload: QueryRequest):
     """
     Accept a list of questions and return results.
