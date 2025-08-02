@@ -48,12 +48,12 @@ class BatchQueryResponse(BaseModel):
     results: List[QueryResponse]
 
 
-@app.get("/")
+@app.get("/health")
 async def root():
     return {"message": "OK!"}
 
 
-@app.post("/api/v1/query", response_model=BatchQueryResponse)
+@app.post("/", response_model=BatchQueryResponse)
 async def query_endpoint(payload: QueryRequest):
     """
     Accept a list of questions and return results.
