@@ -4,6 +4,10 @@ import glob
 import numpy as np
 import asyncio
 from typing import List, Dict, Any, Optional
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # LangGraph and LangChain imports
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -43,10 +47,10 @@ def log_tool_call(tool_fn, tool_name: str):
 class RAGLangGraphMCP:
     def __init__(
         self,
-        base_url: str = "http://172.16.30.137:11434",
-        model: str = "qwen3:32b",
+        base_url: str = None,
+        model: str = None,
         mcp_servers: Dict[str, Dict] = None,
-        use_ollama: bool = True,
+        use_ollama: bool = False,  # Default to VLLM
     ):
         """
         Initialize RAG system with LangGraph and MCP integration
@@ -56,11 +60,22 @@ class RAGLangGraphMCP:
             mcp_servers: Dictionary of MCP server configurations
         """
 
+        # Load configuration from environment variables
+        if base_url is None:
+            base_url = os.getenv(
+                "VLLM_BASE_URL", "http://host.docker.internal:18081/v1"
+            )
+
+        if model is None:
+            model = os.getenv("VLLM_MODEL", "Qwen/Qwen3-32b")
+
         # Default MCP server configuration
         if mcp_servers is None:
             mcp_servers = {
                 "hackathon_mcp": {
-                    "url": "https://mcp-hackathon.cmkl.ai/mcp",
+                    "url": os.getenv(
+                        "MCP_HACKATHON_URL", "https://mcp-hackathon.cmkl.ai/mcp"
+                    ),
                     "transport": "streamable_http",
                 },
                 # Add more MCP servers as needed
@@ -82,16 +97,20 @@ class RAGLangGraphMCP:
         self.mcp_client = None
         self.agent = None
 
-        # Initialize OpenAI LLM
+        # Initialize LLM (VLLM as primary, Ollama as fallback)
         if use_ollama:
+            # Use Ollama configuration
+            ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://172.16.30.137:11434")
+            ollama_model = os.getenv("OLLAMA_MODEL", "qwen3:32b")
             self.llm = ChatOllama(
-                base_url=base_url,
-                model=model,
+                base_url=ollama_base_url,
+                model=ollama_model,
                 temperature=0.0,
                 # max_tokens=60,
             )
             print("Init With Ollama!")
         else:
+            # Use VLLM configuration (primary)
             self.llm = ChatOpenAI(
                 model=model,  # must match --served-model-name "Qwen3-32B"
                 openai_api_base=base_url,  # # "http://172.16.30.137:8081/v1"
@@ -99,7 +118,7 @@ class RAGLangGraphMCP:
                 temperature=0.0,
                 reasoning_effort="low",
             )
-            print("Init With OpenAI Based!")
+            print("Init With VLLM!")
 
         print("🚀 RAG LangGraph MCP System initialized")
 
@@ -687,19 +706,22 @@ mcp_servers = {
     # Add more servers as needed
 }
 
-# VLLM API Config (alternative)
+# VLLM API Config (primary)
 rag = RAGLangGraphMCP(
-    model="Qwen/Qwen3-32b",
     mcp_servers=mcp_servers,
-    base_url="http://host.docker.internal:18081/v1",  # Use host.docker.internal for Docker
-    use_ollama=False,
+    use_ollama=False,  # Use VLLM as primary
 )
 
-index_location = "./index/00-save.bin"
+# Load index from environment variable or default
+index_location = os.getenv("INDEX_PATH", "./index/00-save.bin")
+data_path = os.getenv("DATA_PATH", "./data/")
+
 if not os.path.exists(index_location):
-    rag.load_markdown_files()
-    rag.build_vector_index()
+    print(f"Index not found at {index_location}, building from {data_path}...")
+    rag.load_markdown_files(data_path)
+    rag.build_vector_index(data_path)
 else:
+    print(f"Loading existing index from {index_location}...")
     rag.vectorstore = FAISS.load_local(
         index_location, rag.embeddings, allow_dangerous_deserialization=True
     )

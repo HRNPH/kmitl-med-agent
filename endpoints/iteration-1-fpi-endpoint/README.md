@@ -148,10 +148,32 @@ curl -X POST "http://localhost:8000/api/v1/query" \
 
 ### Environment Variables
 
-The application can be configured using environment variables:
+The application can be configured using environment variables. Create a `.env` file in the root directory:
 
-- `OLLAMA_BASE_URL`: Ollama service URL (default: http://ollama:11434)
-- `PYTHONPATH`: Python path (default: /app)
+```bash
+# VLLM Configuration (Primary)
+VLLM_BASE_URL=http://host.docker.internal:18081/v1
+VLLM_MODEL=Qwen/Qwen3-32b
+
+# Ollama Configuration (Fallback)
+OLLAMA_BASE_URL=http://172.16.30.137:11434
+OLLAMA_MODEL=qwen3:32b
+
+# MCP Server Configuration
+MCP_HACKATHON_URL=https://mcp-hackathon.cmkl.ai/mcp
+
+# Index Configuration
+INDEX_PATH=./index/00-save.bin
+
+# Data Configuration
+DATA_PATH=./data/
+```
+
+**Configuration Priority:**
+
+- VLLM is used as the primary LLM service
+- Ollama is available as a fallback option
+- Index and data paths are configurable via environment variables
 
 ### Data Directory
 

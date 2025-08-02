@@ -6,8 +6,18 @@ services:
     build: .
     ports:
       - "8081:8000"
+    
+    env_file:
+      - .env
     environment:
       - PYTHONPATH=/app
+      - VLLM_BASE_URL=http://host.docker.internal:18081/v1
+      - VLLM_MODEL=Qwen/Qwen3-32b
+      - OLLAMA_BASE_URL=http://172.16.30.137:11434
+      - OLLAMA_MODEL=qwen3:32b
+      - MCP_HACKATHON_URL=https://mcp-hackathon.cmkl.ai/mcp
+      - INDEX_PATH=./index/00-save.bin
+      - DATA_PATH=./data/
     volumes:
       - ./data:/app/data
       - ./src:/app/src
