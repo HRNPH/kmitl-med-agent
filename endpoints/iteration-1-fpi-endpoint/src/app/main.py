@@ -22,10 +22,10 @@ def replacement(text: str):
             result = match.group(0)
             return result  # ค
         else:
-            return None
+            return ""
     except:
         print("Error:", text)
-        return None
+        return ""
 
 
 @asynccontextmanager
@@ -82,8 +82,8 @@ async def single_query_endpoint(payload: SingleQueryRequest):
     result = await rag_system.query(payload.question)
 
     return QueryResponse(
-        answer=replacement(result.get("answer", "Error")),
-        reason=result.get("reason", "No reasoning available"),
+        answer=result.get("answer", ""),
+        reason=result.get("reason", "This question have no valid answer"),
     )
 
 
@@ -107,7 +107,7 @@ async def batch_query_endpoint(payload: QueryRequest):
         simplified_results.append(
             QueryResponse(
                 answer=replacement(result.get("answer", "Error")),
-                reason=result.get("reason", "No reasoning available"),
+                reason=result.get("reason", "This question have no valid answer"),
             )
         )
 

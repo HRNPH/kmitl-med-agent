@@ -595,35 +595,31 @@ NO DEVIATIONS ALLOWED - This protocol ensures optimal medical assistance deliver
             rag_context = f"Error during vector search: {str(e)}"
 
         try:
-            # Pass RAG context into the agent
+            # Pass RAG context into the agent with instruction to provide both answer and reasoning
             response = await self.agent.ainvoke(
                 {
                     "messages": [
                         HumanMessage(
-                            content=f"\\no-think\nRAG Context:\n{rag_context}\n\nUser Question:\n{question}\n\nOutput Only: ก,ข,ค,ง no explanation, no answer text"
+                            content=f"\\no-think\nRAG Context:\n{rag_context}\n\nUser Question:\n{question}\n\nProvide your response in this exact format:\nAnswer: [ก/ข/ค/ง]\nReason: [your reasoning here]\n\nOnly provide the answer and reason, no other text."
                         )
-                        # HumanMessage(content=f"\nRAG Context:\n{rag_context}\n\nUser Question:\n{question}\n\nOutput Only: ก,ข,ค,ง no explanation, no answer text")
                     ]
                 },
                 config={"recursion_limit": 10},
             )
 
-            # Extract final answer
+            # Extract final response
             if response and "messages" in response:
                 final_message = response["messages"][-1]
-                raw_answer = (
+                raw_response = (
                     final_message.content
                     if hasattr(final_message, "content")
                     else str(final_message)
                 )
             else:
-                raw_answer = str(response)
+                raw_response = str(response)
 
-            # Clean the answer to extract only valid multiple choice options
-            answer = self._clean_answer(raw_answer)
-
-            # Generate reasoning based on RAG context and cleaned answer
-            reason = self._generate_reasoning(question, rag_context, answer)
+            # Parse answer and reason using regex
+            answer, reason = self._parse_answer_and_reason(raw_response)
 
             # Return simplified schema as requested
             return {
@@ -639,64 +635,45 @@ NO DEVIATIONS ALLOWED - This protocol ensures optimal medical assistance deliver
                 "reason": error_msg,
             }
 
-    def _clean_answer(self, raw_answer: str) -> str:
-        """Clean the raw answer to extract only valid multiple choice options."""
+    def _parse_answer_and_reason(self, raw_response: str) -> tuple[str, str]:
+        """Parse the LLM response to extract answer and reason using regex."""
         import re
 
         # Remove <think> tags and their content
-        cleaned = re.sub(r"<think>.*?</think>", "", raw_answer, flags=re.DOTALL)
+        cleaned = re.sub(r"<think>.*?</think>", "", raw_response, flags=re.DOTALL)
 
-        # Remove extra whitespace and newlines
-        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        # Try to parse the structured format first
+        answer_match = re.search(r"Answer:\s*([กขคง])", cleaned)
+        reason_match = re.search(r"Reason:\s*(.+?)(?:\n|$)", cleaned, re.DOTALL)
 
-        # Extract only valid multiple choice options
+        if answer_match and reason_match:
+            answer = answer_match.group(1)
+            reason = reason_match.group(1).strip()
+            return answer, reason
+
+        # Fallback: extract any valid multiple choice option
         valid_options = ["ก", "ข", "ค", "ง"]
         found_options = [opt for opt in valid_options if opt in cleaned]
 
         if found_options:
-            # Return the first valid option found
-            return found_options[0]
-        else:
-            # If no valid options found, return the cleaned text
-            return cleaned if cleaned else "Error"
-
-    def _generate_reasoning(self, question: str, rag_context: str, answer: str) -> str:
-        """Generate reasoning for the answer based on RAG context and question."""
-        try:
-            # Extract key information from RAG context
-            context_summary = (
-                rag_context[:500] if len(rag_context) > 500 else rag_context
-            )
-
-            # Check if answer contains valid multiple choice options
-            valid_options = ["ก", "ข", "ค", "ง"]
-            found_options = [opt for opt in valid_options if opt in answer]
-
-            if found_options:
-                # Extract relevant medical topics from context
-                medical_topics = []
-                if "diabetes" in rag_context.lower() or "เบาหวาน" in rag_context:
-                    medical_topics.append("diabetes management")
-                if "hypertension" in rag_context.lower() or "ความดัน" in rag_context:
-                    medical_topics.append("hypertension guidelines")
-                if "emergency" in rag_context.lower() or "ฉุกเฉิน" in rag_context:
-                    medical_topics.append("emergency procedures")
-                if "medication" in rag_context.lower() or "ยา" in rag_context:
-                    medical_topics.append("medication safety")
-                if "infection" in rag_context.lower() or "ติดเชื้อ" in rag_context:
-                    medical_topics.append("infection control")
-
-                topics_str = (
-                    ", ".join(medical_topics)
-                    if medical_topics
-                    else "medical guidelines"
+            answer = found_options[0]
+            # Extract any text after the answer as reasoning
+            answer_pos = cleaned.find(answer)
+            if answer_pos != -1:
+                remaining_text = cleaned[answer_pos + len(answer) :].strip()
+                reason = (
+                    remaining_text
+                    if remaining_text
+                    else "Answer selected based on medical knowledge base."
                 )
-
-                return f"The answer {answer} was selected based on {topics_str} from the medical knowledge base. The system analyzed the question against relevant clinical protocols and best practices."
             else:
-                return f"The system processed the question against the medical knowledge base but was unable to determine a clear multiple choice answer. Available information includes clinical guidelines and medical procedures."
-        except Exception as e:
-            return f"Reasoning generation error: {str(e)}"
+                reason = "Answer selected based on medical knowledge base."
+        else:
+            # If no valid options found, return error
+            answer = "Error"
+            reason = "Unable to determine a valid answer from the response."
+
+        return answer, reason
 
     async def query_with_full_response(self, question: str) -> Dict[str, Any]:
         """Query the RAG system with full response details (for internal use)."""
@@ -715,32 +692,31 @@ NO DEVIATIONS ALLOWED - This protocol ensures optimal medical assistance deliver
             rag_context = f"Error during vector search: {str(e)}"
 
         try:
-            # Pass RAG context into the agent
+            # Pass RAG context into the agent with instruction to provide both answer and reasoning
             response = await self.agent.ainvoke(
                 {
                     "messages": [
                         HumanMessage(
-                            content=f"\\no-think\nRAG Context:\n{rag_context}\n\nUser Question:\n{question}\n\nOutput Only: ก,ข,ค,ง no explanation, no answer text"
+                            content=f"\\no-think\nRAG Context:\n{rag_context}\n\nUser Question:\n{question}\n\nProvide your response in this exact format:\nAnswer: [ก/ข/ค/ง]\nReason: [your reasoning here]\n\nOnly provide the answer and reason, no other text."
                         )
-                        # HumanMessage(content=f"\nRAG Context:\n{rag_context}\n\nUser Question:\n{question}\n\nOutput Only: ก,ข,ค,ง no explanation, no answer text")
                     ]
                 },
                 config={"recursion_limit": 10},
             )
 
-            # Extract final answer
+            # Extract final response
             if response and "messages" in response:
                 final_message = response["messages"][-1]
-                raw_answer = (
+                raw_response = (
                     final_message.content
                     if hasattr(final_message, "content")
                     else str(final_message)
                 )
             else:
-                raw_answer = str(response)
+                raw_response = str(response)
 
-            # Clean the answer to extract only valid multiple choice options
-            answer = self._clean_answer(raw_answer)
+            # Parse answer and reason using regex
+            answer, reason = self._parse_answer_and_reason(raw_response)
 
             # Separate RAG vs MCP tool calls
             rag_tool_calls = [
@@ -768,6 +744,7 @@ NO DEVIATIONS ALLOWED - This protocol ensures optimal medical assistance deliver
             return {
                 "question": question,
                 "answer": answer,
+                "reason": reason,
                 "took": (time.time() - start),
                 "agent_response": response,
                 "rag_tool_calls": rag_tool_calls,
