@@ -611,15 +611,18 @@ NO DEVIATIONS ALLOWED - This protocol ensures optimal medical assistance deliver
             # Extract final answer
             if response and "messages" in response:
                 final_message = response["messages"][-1]
-                answer = (
+                raw_answer = (
                     final_message.content
                     if hasattr(final_message, "content")
                     else str(final_message)
                 )
             else:
-                answer = str(response)
+                raw_answer = str(response)
 
-            # Generate reasoning based on RAG context and question
+            # Clean the answer to extract only valid multiple choice options
+            answer = self._clean_answer(raw_answer)
+
+            # Generate reasoning based on RAG context and cleaned answer
             reason = self._generate_reasoning(question, rag_context, answer)
 
             # Return simplified schema as requested
@@ -635,6 +638,27 @@ NO DEVIATIONS ALLOWED - This protocol ensures optimal medical assistance deliver
                 "answer": "Error",
                 "reason": error_msg,
             }
+
+    def _clean_answer(self, raw_answer: str) -> str:
+        """Clean the raw answer to extract only valid multiple choice options."""
+        import re
+
+        # Remove <think> tags and their content
+        cleaned = re.sub(r"<think>.*?</think>", "", raw_answer, flags=re.DOTALL)
+
+        # Remove extra whitespace and newlines
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+
+        # Extract only valid multiple choice options
+        valid_options = ["ก", "ข", "ค", "ง"]
+        found_options = [opt for opt in valid_options if opt in cleaned]
+
+        if found_options:
+            # Return the first valid option found
+            return found_options[0]
+        else:
+            # If no valid options found, return the cleaned text
+            return cleaned if cleaned else "Error"
 
     def _generate_reasoning(self, question: str, rag_context: str, answer: str) -> str:
         """Generate reasoning for the answer based on RAG context and question."""
@@ -707,13 +731,16 @@ NO DEVIATIONS ALLOWED - This protocol ensures optimal medical assistance deliver
             # Extract final answer
             if response and "messages" in response:
                 final_message = response["messages"][-1]
-                answer = (
+                raw_answer = (
                     final_message.content
                     if hasattr(final_message, "content")
                     else str(final_message)
                 )
             else:
-                answer = str(response)
+                raw_answer = str(response)
+
+            # Clean the answer to extract only valid multiple choice options
+            answer = self._clean_answer(raw_answer)
 
             # Separate RAG vs MCP tool calls
             rag_tool_calls = [
