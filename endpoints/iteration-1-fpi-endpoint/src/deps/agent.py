@@ -341,7 +341,10 @@ Blood pressure consistently above 140/90 mmHg
         # Build FAISS index
         self.vectorstore = FAISS.from_documents(chunks, self.embeddings)
 
-        print("✅ Vector index built successfully!")
+        # Save the index
+        os.makedirs("./index", exist_ok=True)
+        self.vectorstore.save_local("./index/00-save.bin")
+        print("✅ Vector index built and saved successfully!")
 
     def search_docs(self, query: str, k: int = 5) -> List[Document]:
         """Search relevant documents from vector store"""
@@ -688,7 +691,7 @@ mcp_servers = {
 rag = RAGLangGraphMCP(
     model="Qwen/Qwen3-32b",
     mcp_servers=mcp_servers,
-    base_url="http://localhost:18081/v1",
+    base_url="http://host.docker.internal:18081/v1",  # Use host.docker.internal for Docker
     use_ollama=False,
 )
 

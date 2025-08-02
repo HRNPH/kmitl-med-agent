@@ -5,17 +5,14 @@ services:
   app:
     build: .
     ports:
-      - "8000:8000"
+      - "8081:8000"
     environment:
       - PYTHONPATH=/app
-      - OLLAMA_BASE_URL=http://ollama:11434
     volumes:
       - ./data:/app/data
       - ./src:/app/src
-    depends_on:
-      - ollama
-    networks:
-      - app-network
+      - ./index:/app/index
+    network_mode: host
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
@@ -23,9 +20,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-volumes:
-  ollama_data:
 
 networks:
   app-network:

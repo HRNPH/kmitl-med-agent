@@ -24,14 +24,13 @@ RUN pip install uv
 COPY pyproject.toml ./
 
 # Install Python dependencies using uv
-RUN uv sync --frozen
+RUN uv sync
 
 # Copy source code
 COPY src/ ./src/
-COPY README.md ./
 
-# Create data directory for markdown files
-RUN mkdir -p ./data
+# Create data and index directories
+RUN mkdir -p ./data ./index
 
 # Expose port
 EXPOSE 8000
