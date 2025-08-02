@@ -12,6 +12,21 @@ from contextlib import asynccontextmanager
 # ---------- Config / Initialization ----------
 rag_system = rag  # Using your previously created `rag` instance
 
+import re
+
+
+def replacement(text: str):
+    match = re.search(r"[กขคง]", text)
+    try:
+        if match:
+            result = match.group(0)
+            return result  # ค
+        else:
+            return None
+    except:
+        print("Error:", text)
+        return None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -67,7 +82,7 @@ async def single_query_endpoint(payload: SingleQueryRequest):
     result = await rag_system.query(payload.question)
 
     return QueryResponse(
-        answer=result.get("answer", "Error"),
+        answer=replacement(result.get("answer", "Error")),
         reason=result.get("reason", "No reasoning available"),
     )
 
@@ -91,7 +106,7 @@ async def batch_query_endpoint(payload: QueryRequest):
     for result in results:
         simplified_results.append(
             QueryResponse(
-                answer=result.get("answer", "Error"),
+                answer=replacement(result.get("answer", "Error")),
                 reason=result.get("reason", "No reasoning available"),
             )
         )
